@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orzeł czy Reszka?</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background: white;
+            width: 300px;
+            margin: 50px auto;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        input {
+            width: 80%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2><em>Orzeł czy Reszka?</em></h2>
+        <p>Twoje pieniądze: <span id="cashP">100</span> $</p>
+        <p>Szczęście: <span id="luckP">1</span></p>
+        <input type="number" id="moneyInput" placeholder="O ile obstawiasz?">
+        <p>Co obstawiasz?</p>
+        <button onclick="orzelKlik()">Orzeł!</button>
+        <button onclick="reszkaKlik()">Reszka!</button>
+        <button onclick="klik()">Losuj!</button>
+        <button onclick="kupUlepszenie()">Kup ulepszenie szczęścia (1000$)</button>
+        <button onclick="resetGame()">Spróbuj ponownie</button>
+        <h3>Leaderboard (Top 10)</h3>
+        <ol id="leaderboard"></ol>
+    </div>
+
+<script>
+    let player = {
+        los: 0,
+        obstawiono: -1,
+        dolary: 100,
+        szczescie: 1
+    };
+
+    function orzelKlik() {
+        player.obstawiono = 0;
+    }
+
+    function reszkaKlik() {
+        player.obstawiono = 1;
+    }
+    
+    function klik() {
+        let inputPieniedzy = document.getElementById('moneyInput');
+        let obstawionaKwota = parseFloat(inputPieniedzy.value);
+
+        if (isNaN(obstawionaKwota) || obstawionaKwota <= 0) {
+            alert('Podaj poprawną kwotę zakładu!');
+            return;
+        }
+        if (player.dolary < obstawionaKwota) {
+            alert('Nie masz wystarczającej ilości pieniędzy!');
+            return;
+        }
+        if (player.obstawiono === -1) {
+            alert('Najpierw wybierz Orła lub Reszkę!');
+            return;
+        }
+
+        player.dolary -= obstawionaKwota;
+        
+        let szansa = Math.random();
+        if (szansa < player.szczescie / 10) {
+            player.los = player.obstawiono; 
+        } else {
+            player.los = Math.floor(Math.random() * 2);
+        }
+
+        if (player.los === player.obstawiono) {
+            let wygranaKwota = obstawionaKwota * 1.2;
+            player.dolary += wygranaKwota;
+            alert('Gratulacje! Wygrałeś ' + wygranaKwota.toFixed(2) + ' $!');
+        } else {
+            alert('Niestety tym razem nie wygrałeś. Spróbuj ponownie!');
+        }
+
+        document.getElementById('cashP').innerText = player.dolary;
+        zapisz();
+        aktualizujLeaderboard();
+    }
+
+    function kupUlepszenie() {
+        if (player.dolary >= 1000) {
+            player.dolary -= 1000;
+            player.szczescie += 1;
+            document.getElementById('cashP').innerText = player.dolary;
+            document.getElementById('luckP').innerText = player.szczescie;
+            zapisz();
+            alert('Kupiono ulepszenie! Szczęście zwiększone!');
+        } else {
+            alert('Nie masz wystarczająco pieniędzy na ulepszenie!');
+        }
+    }
+
+    function resetGame() {
+        player.dolary = 100;
+        player.szczescie = 1;
+        document.getElementById('cashP').innerText = player.dolary;
+        document.getElementById('luckP').innerText = player.szczescie;
+        zapisz();
+    }
+
+    function zapisz() {
+        localStorage.setItem('gracz', JSON.stringify(player));
+        let leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
+        leaderboard.push(player.dolary);
+        leaderboard.sort((a, b) => b - a);
+        leaderboard = leaderboard.slice(0, 10);
+        localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+    }
+
+    function wczytaj() {
+        let savedData = localStorage.getItem('gracz');
+        if (savedData) {
+            player = JSON.parse(savedData);
+            document.getElementById('cashP').innerText = player.dolary;
+            document.getElementById('luckP').innerText = player.szczescie;
+        }
+        aktualizujLeaderboard();
+    }
+
+    function aktualizujLeaderboard() {
+        let leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
+        let leaderboardElement = document.getElementById('leaderboard');
+        leaderboardElement.innerHTML = '';
+        leaderboard.forEach((score, index) => {
+            let li = document.createElement('li');
+            li.textContent = `#${index + 1}: ${score} $`;
+            leaderboardElement.appendChild(li);
+        });
+    }
+    const API_URL = "https://script.google.com/macros/s/AKfycbzx_ow13oyBl3QjU6U-matCqD1LNpqg_NfVMUpSTTzfED3aBXd4GMTzze83de6n2zFl1A/exec";
+
+function zapiszWynik() {
+    let gracz = prompt("Podaj swoją nazwę:");
+    if (!gracz) return;
+
+    fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify({ gracz: gracz, wynik: player.dolary }),
+        headers: { "Content-Type": "application/json" }
+    }).then(() => {
+        alert("Wynik zapisany!");
+        pobierzLeaderboard();
+    });
+}
+
+function pobierzLeaderboard() {
+    fetch(API_URL)
+        .then(res => res.json())
+        .then(dane => {
+            let leaderboardElement = document.getElementById('leaderboard');
+            leaderboardElement.innerHTML = '';
+            dane.forEach((entry, index) => {
+                let li = document.createElement('li');
+                li.textContent = `#${index + 1}: ${entry[0]} - ${entry[1]} $`;
+                leaderboardElement.appendChild(li);
+            });
+        });
+}
+
+// Pobierz wyniki na starcie
+pobierzLeaderboard();
+
+
+    wczytaj();
+</script>
+</body>
+</html>
